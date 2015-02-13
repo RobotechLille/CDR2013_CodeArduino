@@ -1,0 +1,254 @@
+Only in libraries/NilRTOS: NilFIFO.h
+Only in libraries/NilRTOS: NilRTOS.c
+Only in libraries/NilRTOS: NilRTOS.h
+Only in libraries/NilRTOS: NilSerial.cpp
+Only in libraries/NilRTOS: NilSerial.h
+Only in libraries/NilRTOS: NilTwiWaitSignal.cpp
+Only in libraries/NilRTOS: avr_heap.h
+Only in libraries/NilRTOS: board.c
+Only in libraries/NilRTOS: examples
+diff -r nilOrgFiles/nil.c libraries/NilRTOS/nil.c
+24c24
+<  * @defgroup nil
+---
+>  * @defgroup nil Nil
+43d42
+< 
+76a76,78
+>   #if WHG_MOD
+>        tr < nil.idlep;
+> #else  /* WHG_MOD */
+77a80
+> #endif  /* WHG_MOD */
+93a97,99
+> #if WHG_MOD
+>   port_switch(nil.threads, nil.idlep);
+> #else  /* WHG_MOD */
+94a101
+> #endif  /* WHG_MOD */
+134a142,144
+> #if WHG_MOD
+>   } while (tr < nil.idlep);
+> #else  /* WHG_MOD */
+135a146
+> #endif  /* WHG_MOD */
+171a183,185
+> #if WHG_MOD
+>   } while (tr < nil.idlep);
+> #else  /* WHG_MOD */
+172a187,188
+> #endif  /* WHG_MOD */
+> 
+195a212,214
+> #if WHG_MOD
+>                (tr < nil.idlep),
+> #else  /* WHG_MOD */
+196a216
+> #endif  /* WHG_MOD */
+222a243,245
+> #if WHG_MOD
+>     if (otr == nil.idlep) {
+> #else  /* WHG_MOD */
+223a247
+> #endif  /* WHG_MOD */
+250c274,277
+< 
+---
+> #if WHG_MOD
+>   nilDbgAssert(otr != nil.idlep,
+>                 "nilSchGoSleepTimeoutS(), #1", "idle cannot sleep");
+> #else  /* WHG_MOD */
+252a280,281
+> #endif  /* WHG_MOD */
+> 
+287a317,319
+> #if WHG_MOD
+>       if (ntr == nil.idlep) {
+> #else  /* WHG_MOD */
+288a321
+> #endif  /* WHG_MOD */
+297a331,334
+> #if WHG_MOD
+>     nilDbgAssert(ntr <= nil.idlep,
+>                  "nilSchGoSleepTimeoutS(), #2", "pointer out of range");
+> #else  /* WHG_MOD */
+299a337
+> #endif  /* WHG_MOD */
+diff -r nilOrgFiles/nil.h libraries/NilRTOS/nil.h
+118a119
+> #if !WHG_MOD
+126a128
+> #endif /* WHG_MOD */
+165a168
+> #if !WHG_MOD
+173a177
+> #endif  / *WHG_MOD */
+183c187,188
+< #if NIL_CFG_ENABLE_ASSERTS
+---
+> #if NIL_CFG_ENABLE_ASSERTS  || defined(__DOXYGEN__)
+> /** enable debuging */
+276a282
+>   
+287a294,303
+> #if WHG_MOD
+>  /**
+>    * @brief   Pointer to thread structures for all the defined threads.
+>    */
+>   thread_t * const    threads;
+>   /**
+>    * @brief   Pointer to idle thread.
+>    */
+>   thread_t  * const   idlep;
+> #else  /* WHG_MOD */
+291a308
+> #endif  /* WHG_MOD */
+312a330,333
+> #if WHG_MOD
+> #define NIL_THREADS_TABLE_BEGIN()                                           \
+>   const thread_config_t nil_thd_configs[] = {
+> #else  /* WHG_MOD */
+315c336
+< 
+---
+> #endif  /* WHG_MOD */
+324a346,354
+> #if WHG_MOD
+> #define NIL_THREADS_TABLE_END()                                             \
+>   {"idle", 0, NULL, NULL, 0}                                                \
+> };                                                                          \
+> static thread_t nil_threads[sizeof(nil_thd_configs)/sizeof(thread_config_t)];  \
+> nil_system_t nil = {0, 0, 0, nil_threads,                                      \
+> &nil_threads[sizeof(nil_thd_configs)/sizeof(thread_config_t) - 1]};            \
+> const uint8_t nil_thd_count = sizeof(nil_thd_configs)/sizeof(thread_config_t) - 1;
+> #else  /* WHG_MOD */
+328c358
+< 
+---
+> #endif  /* WHG_MOD */
+451a482,485
+> #if WHG_FIX
+> #define nilThdSleepUntilS(time)                                             \
+>   nilSchGoSleepTimeoutS(NIL_THD_SLEEPING, (time) - nilTimeNowI())
+> #else  // WHG_FIX
+454c488
+< 
+---
+> #endif  // WHG_FIX
+668a703,706
+> #if WHG_MOD
+> extern const thread_config_t nil_thd_configs[];
+> extern const uint8_t nil_thd_count;
+> #else  /* WHG_MOD */
+669a708
+> #endif  /* WHG_MOD */
+684c723,725
+<   systime_t nilTimeNow(void);
+---
+> #if WHG_FIX
+>   systime_t nilTimeNow();
+> #endif  // WHG_FIX
+Only in libraries/NilRTOS: nilUtility.cpp
+diff -r nilOrgFiles/nilconf.h libraries/NilRTOS/nilconf.h
+32a33,41
+> /**
+>  * @brief   Problem fixes.
+>  */
+> #define WHG_FIX TRUE
+> 
+> /**
+>  * @brief   Use mods for Arduino library.
+>  */
+> #define WHG_MOD TRUE
+44c53
+< #define NIL_CFG_FREQUENCY                   50000
+---
+> #define NIL_CFG_FREQUENCY                   (F_CPU/16384L)
+51c60
+<  *          The value one is not valid, timeouts are rounded up to
+---
+>  *          The value one is not valid, timeouts are rounder up to
+54c63
+< #define NIL_CFG_TIMEDELTA                   2
+---
+> #define NIL_CFG_TIMEDELTA                   0
+diff -r nilOrgFiles/nilcore.c libraries/NilRTOS/nilcore.c
+21c21
+<  * @file    GCC/AVR/nilcore.c
+---
+>  * @file    nilcore.c
+24c24
+<  * @defgroup AVR_CORE
+---
+>  * @defgroup AVR_CORE AVR core
+diff -r nilOrgFiles/nilcore.h libraries/NilRTOS/nilcore.h
+21c21
+<  * @file    GCC/AVR/nilcore.h
+---
+>  * @file    nilcore.h
+24c24
+<  * @addtogroup AVR_CORE
+---
+>  * @addtogroup AVR_CORE   AVR core
+87a88,90
+> #ifdef __AVR_3_BYTE_PC__
+>   uint8_t       pcx;
+> #endif  /* __AVR_3_BYTE_PC_ */
+117a121,123
+> #ifdef __AVR_3_BYTE_PC__
+>   uint8_t       pcx;
+> #endif  /* __AVR_3_BYTE_PC__ */
+131,139c137,146
+< #define SETUP_CONTEXT(tp, workspace, wsize, pf, arg) {                      \
+<   (tp)->p_ctx.sp = (struct port_intctx *)((uint8_t *)workspace + wsize  -   \
+<                                           sizeof(struct port_intctx));      \
+<   (tp)->p_ctx.sp->r2  = (uint8_t)pf;                                        \
+<   (tp)->p_ctx.sp->r3  = (uint8_t)((unsigned)pf >> 8);                       \
+<   (tp)->p_ctx.sp->r4  = (uint8_t)arg;                                       \
+<   (tp)->p_ctx.sp->r5  = (uint8_t)((unsigned)arg >> 8);                      \
+<   (tp)->p_ctx.sp->pcl = (uint8_t)((unsigned)_port_thread_start >> 8);       \
+<   (tp)->p_ctx.sp->pch = (uint8_t)_port_thread_start;                        \
+---
+> #ifndef __AVR_3_BYTE_PC__
+> #define SETUP_CONTEXT(tp, workspace, wsize, pf, arg) {                  \
+>   (tp)->ctxp = (struct port_intctx *)((uint8_t *)workspace + wsize  -   \
+>                                           sizeof(struct port_intctx));  \
+>   (tp)->ctxp->r2  = (uint8_t)pf;                                        \
+>   (tp)->ctxp->r3  = (uint8_t)((unsigned)pf >> 8);                       \
+>   (tp)->ctxp->r4  = (uint8_t)arg;                                       \
+>   (tp)->ctxp->r5  = (uint8_t)((unsigned)arg >> 8);                      \
+>   (tp)->ctxp->pcl = (uint8_t)((unsigned)_port_thread_start >> 8);       \
+>   (tp)->ctxp->pch = (uint8_t)_port_thread_start;                        \
+141c148,160
+< 
+---
+> #else  /* __AVR_3_BYTE_PC__ */
+> #define SETUP_CONTEXT(tp, workspace, wsize, pf, arg) {                  \
+>   (tp)->ctxp = (struct port_intctx *)((uint8_t *)workspace + wsize  -   \
+>                                           sizeof(struct port_intctx));  \
+>   (tp)->ctxp->r2  = (uint8_t)pf;                                        \
+>   (tp)->ctxp->r3  = (uint8_t)((unsigned)pf >> 8);                       \
+>   (tp)->ctxp->r4  = (uint8_t)arg;                                       \
+>   (tp)->ctxp->r5  = (uint8_t)((unsigned)arg >> 8);                      \
+>   (tp)->ctxp->pcx = 0;                                                  \
+>   (tp)->ctxp->pcl = (uint8_t)((unsigned)_port_thread_start >> 8);       \
+>   (tp)->ctxp->pch = (uint8_t)_port_thread_start;                        \
+> }
+> #endif  /* __AVR_3_BYTE_PC__ */
+184c203
+<   nilSysLockFromIsr();                                                      \
+---
+>   nilSysLockFromISR();                                                      \
+186c205
+<   nilSysUnlockFromIsr();                                                    \
+---
+>   nilSysUnlockFromISR();                                                    \
+diff -r nilOrgFiles/niltypes.h libraries/NilRTOS/niltypes.h
+21c21
+<  * @file    GCC/AVR/niltypes.h
+---
+>  * @file    niltypes.h
+42c42
+< typedef int8_t          cnt_t;      /**< @brief Type of signed counter.     */
+---
+> typedef int16_t         cnt_t;      /**< @brief Type of signed counter.     */
